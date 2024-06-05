@@ -38,18 +38,20 @@ static void indexFiles(const char *path)
     {
         // check is directory
         String rc;
+        // we need 2 char for prefix
+        char fileName[FILE_NAME_DIM-2];
         if (file.isDir())
         {
-            String fname = file.FileName();
-            indexFiles(fname);
-            rc = addPrefix(INDEX_ROW_PREFIX_DIR, fname);
+            file.getName(fileName,sizeof(fileName));
+            indexFiles(fileName);
+            rc = addPrefix(INDEX_ROW_PREFIX_DIR, String(fileName));
         }
         else
         {
-            String fname = file.fileName();
-            rc = addPrefix(INDEX_ROW_PREFIX_FILE,fname));
+            file.getName(fileName,sizeof(fileName));
+            rc = addPrefix(INDEX_ROW_PREFIX_FILE,String(fileName));
         }
-        addRecord(idxFile, rc);
+        addRecord(&idxFile, rc);
         file.close();
     }
     dirFile.close();
@@ -67,8 +69,10 @@ void addRecord(Print *pr, String rc)
     pr->write("\n");
 }
 
-static void readingIndex(const char *dirPath)
+static long * loadIndexed(const char *dirPath)
 {
+    long * lineOffset;
+    long cOffset = 0;
     String tempFilePath = String(dirPath) + "/" + INDEX_DB_FILE_NAME;
     file_t tempFile;
     if (!tempFile.open(tempFilePath.c_str(), O_RDONLY))
@@ -80,12 +84,50 @@ static void readingIndex(const char *dirPath)
     //tempFile.fgets()
     while (tempFile.available())
     {
-        char ch;
-        tempFile.read(&ch, 1);
-        if (ch == '\n')
-        {
-            fileCount++;
+        cOffset++;
+        char line[FILE_NAME_DIM];
+        int n = tempFile.fgets(line,sizeof(line));
+        if (line[n-1] != '\n' && n == (sizeof(line)-1)) {
+            Serial.println("file name to long");
+        } else {
+            lineOffset[fileCount++] = cOffset;
         }
     }
+    Serial.print("total file/folder indexing: ");
+    Serial.println(fileCount);
     tempFile.close();
+    return lineOffset;
+}
+
+static String readLine(const char * path, long offset) {
+    file_t f;
+    if (!f.open(path, O_RDONLY)) {
+        Serial.println("can't open file");
+        return "";
+    }
+
+    f.seekSet(offset);
+    char line[FILE_NAME_DIM];
+    while (f.available())
+    {
+        int n = f.fgets(line,sizeof(line));
+        if (line[n-1] != '\n' && n == (sizeof(line)-1)) {
+            Serial.println("file name to long");
+        }
+    }
+    f.close();
+    return String(line);
+}
+static String readLineByIndex(const char * path, long *offsets, int index) {
+    return readLine(path,offsets[index]);
+}
+
+// check file by cut prefix;
+static bool isFile(String line) {
+    if (line.startsWith(INDEX_ROW_PREFIX_FILE)); return true;
+    return false;
+}
+// get filename by cut prefix;
+static String getFileName(String line) {
+    return line.substring(2);
 }
