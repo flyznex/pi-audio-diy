@@ -1,7 +1,7 @@
-#include <file_sdfat.h>
+#include "file_sdfat.h"
 #include "SdFat.h"
 
-static bool initCard()
+bool initCard()
 {
     if (!sd.begin(SD_CONFIG))
         return false;
@@ -9,7 +9,7 @@ static bool initCard()
 }
 
 // indexing file in dir
-static void indexFiles(const char *path)
+void indexFiles(const char *path)
 {
     file_t dirFile;
     if (!dirFile.open(path, O_RDONLY))
@@ -39,17 +39,17 @@ static void indexFiles(const char *path)
         // check is directory
         String rc;
         // we need 2 char for prefix
-        char fileName[FILE_NAME_DIM-2];
+        char fileName[FILE_NAME_DIM - 2];
         if (file.isDir())
         {
-            file.getName(fileName,sizeof(fileName));
+            file.getName(fileName, sizeof(fileName));
             indexFiles(fileName);
             rc = addPrefix(INDEX_ROW_PREFIX_DIR, String(fileName));
         }
         else
         {
-            file.getName(fileName,sizeof(fileName));
-            rc = addPrefix(INDEX_ROW_PREFIX_FILE,String(fileName));
+            file.getName(fileName, sizeof(fileName));
+            rc = addPrefix(INDEX_ROW_PREFIX_FILE, String(fileName));
         }
         addRecord(&idxFile, rc);
         file.close();
@@ -69,39 +69,44 @@ void addRecord(Print *pr, String rc)
     pr->write("\n");
 }
 
-static long * loadIndexed(const char *dirPath)
+long *loadIndexed(const char *dirPath)
 {
-    long * lineOffset;
+    long *lineOffsets;
     long cOffset = 0;
     String tempFilePath = String(dirPath) + "/" + INDEX_DB_FILE_NAME;
     file_t tempFile;
     if (!tempFile.open(tempFilePath.c_str(), O_RDONLY))
     {
         Serial.println("Failed to open index file");
-        return;
+        return lineOffsets;
     }
     fileCount = 0;
-    //tempFile.fgets()
+    // tempFile.fgets()
     while (tempFile.available())
     {
         cOffset++;
         char line[FILE_NAME_DIM];
-        int n = tempFile.fgets(line,sizeof(line));
-        if (line[n-1] != '\n' && n == (sizeof(line)-1)) {
+        int n = tempFile.fgets(line, sizeof(line));
+        if (line[n - 1] != '\n' && n == (sizeof(line) - 1))
+        {
             Serial.println("file name to long");
-        } else {
-            lineOffset[fileCount++] = cOffset;
+        }
+        else
+        {
+            lineOffsets[fileCount++] = cOffset;
         }
     }
     Serial.print("total file/folder indexing: ");
     Serial.println(fileCount);
     tempFile.close();
-    return lineOffset;
+    return lineOffsets;
 }
 
-static String readLine(const char * path, long offset) {
+String readLine(const char *path, long offset)
+{
     file_t f;
-    if (!f.open(path, O_RDONLY)) {
+    if (!f.open(path, O_RDONLY))
+    {
         Serial.println("can't open file");
         return "";
     }
@@ -110,24 +115,59 @@ static String readLine(const char * path, long offset) {
     char line[FILE_NAME_DIM];
     while (f.available())
     {
-        int n = f.fgets(line,sizeof(line));
-        if (line[n-1] != '\n' && n == (sizeof(line)-1)) {
+        int n = f.fgets(line, sizeof(line));
+        if (line[n - 1] != '\n' && n == (sizeof(line) - 1))
+        {
             Serial.println("file name to long");
         }
     }
     f.close();
     return String(line);
 }
-static String readLineByIndex(const char * path, long *offsets, int index) {
-    return readLine(path,offsets[index]);
+String readLineByIndex(const char *path, long *offsets, int index)
+{
+    return readLine(path, offsets[index]);
+}
+
+String *readPagingWithIndex(const char *path, long *offset, int index, int psize)
+{
+    String *page = new String[psize];
+    int startIdx = (index / psize) * psize;
+    int endIdx = min(startIdx + psize, fileCount);
+    file_t f;
+    if (!f.open(path, O_RDONLY))
+    {
+        Serial.println("can't open file");
+        return page;
+    }
+    for (int i = startIdx; i <= endIdx; i++)
+    {
+        f.seek(startIdx);
+        char line[FILE_NAME_DIM];
+        while (f.available())
+        {
+            int n = f.fgets(line, sizeof(line));
+            if (line[n - 1] != '\n' && n == (sizeof(line) - 1))
+            {
+                Serial.println("file name to long");
+            }
+            page[i] = String(line);
+        }
+    }
+    f.close();
+    return page;
 }
 
 // check file by cut prefix;
-static bool isFile(String line) {
-    if (line.startsWith(INDEX_ROW_PREFIX_FILE)); return true;
+bool isFile(String line)
+{
+    if (line.startsWith(INDEX_ROW_PREFIX_FILE))
+        ;
+    return true;
     return false;
 }
 // get filename by cut prefix;
-static String getFileName(String line) {
+String getFileName(String line)
+{
     return line.substring(2);
 }

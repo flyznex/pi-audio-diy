@@ -1,0 +1,128 @@
+{
+    "version": 1,
+    "author": "Thuận Phạm",
+    "editor": "wokwi",
+    "parts": [
+        {
+            "type": "wokwi-pi-pico",
+            "id": "pico",
+            "top": 0,
+            "left": 0,
+            "attrs": {
+                "env": "arduino-community"
+            }
+        },
+        {
+            "type": "wokwi-ssd1306",
+            "id": "ssd1306",
+            "top": 200,
+            "left": -200,
+            "attrs": {}
+        },
+        {
+            "type": "wokwi-microsd-card",
+            "id": "sd1",
+            "top": 20,
+            "left": -300.67,
+            "rotate": 0,
+            "attrs": {}
+          }
+    ],
+    "connections": [
+        [
+            "pico:GP0",
+            "$serialMonitor:RX",
+            "",
+            []
+        ],
+        [
+            "pico:GP1",
+            "$serialMonitor:TX",
+            "",
+            []
+        ],
+        [
+            "pico:GND.1",
+            "ssd1306:GND",
+            "black",
+            []
+        ],
+        [
+            "pico:3V3",
+            "ssd1306:3V3",
+            "red",
+            []
+        ],
+        [
+            "pico:GP13",
+            "ssd1306:CS",
+            "green",
+            []
+        ],
+        [
+            "pico:GP14",
+            "ssd1306:DC",
+            "green",
+            []
+        ],
+        [
+            "pico:GP12",
+            "ssd1306:RST",
+            "green",
+            []
+        ],
+        [
+            "pico:GP10",
+            "ssd1306:CLK",
+            "green",
+            []
+        ],        [
+            "pico:GP11",
+            "ssd1306:DATA",
+            "green",
+            ["*"]
+        ],
+        [
+            "pico:GND.6",
+            "sd1:GND",
+            "black",
+            []
+        ],
+        [
+            "pico:GP6",
+            "sd1:SCK",
+            "green",
+            []
+        ],
+        [
+            "pico:GP5",
+            "sd1:CS",
+            "green",
+            []
+        ],
+        [
+            "pico:VBUS",
+            "sd1:VCC",
+            "red",
+            []
+        ],
+        [
+            "pico:GP7",
+            "sd1:DI",
+            "black",
+            []
+        ],
+        [
+            "pico:GP4",
+            "sd1:DO",
+            "green",
+            []
+        ]
+    ],
+    "dependencies": {},
+    "serialMonitor": {
+        "display": "auto",
+        "newline": "lf",
+        "convertEol": false
+    }
+}

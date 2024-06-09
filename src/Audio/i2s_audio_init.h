@@ -15,7 +15,11 @@ public:
              int wclk = PIN_WCLK, int dout = PIN_DOUT, int bclk = PIN_BCLK,
              int mck_multi = PIN_MCLK_MULTI);
     ~I2SAudio();
-    I2SStream() I2SStream;
+    void Player(char * path);
 private:
     I2SStream i2s;
-}
+    WAVDecoder wavDecoder;
+   // MP3Decoder mp3Decoder;
+    //FLACDecoder flacDecoder;
+    //VolumeStream volume;
+};

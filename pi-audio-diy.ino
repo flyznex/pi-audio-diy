@@ -25,32 +25,28 @@
    microphone needs at least 1MHz.
 */
 
-#include <I2S.h>
-
-I2S i2s(INPUT);
+#include "src/Display/ssd1306.h"
 
 void setup() {
-  Serial.begin(115200);
-
-  i2s.setDATA(0);
-  i2s.setBCLK(1); // Note: LRCLK = BCLK + 1
-  i2s.setBitsPerSample(16);
-  i2s.setFrequency(22050);
+  Serial1.begin(115200);
+  Serial1.println("Hello Arduino\n");
+  bool d = initDisplay();
+  if (!d) {
+    Serial1.println("can't start display module");
+  }
   // NOTE: The following values are known to work with the Adafruit microphone:
   // i2s.setBitsPerSample(32);
   // i2s.setFrequency(16000);
-  i2s.begin();
-
-  while (1) {
-    int16_t l, r;
-    i2s.read16(&l, &r);
-    // NOTE: Adafruit microphone word size needs to match the BPS above.
-    // int32_t l, r;
-    // i2s.read32(&l, &r);
-    Serial.printf("%d %d\r\n", l, r);
-  }
+  ssd1036Display.clearDisplay();
+  ssd1036Display.setTextSize(1);
+  ssd1036Display.setTextColor(SSD1306_WHITE);
+  ssd1036Display.setCursor(0,0);
+  // Draw some text
+  ssd1036Display.println(F("str"));
+  ssd1036Display.display();
 }
 
 void loop() {
   /* Nothing here */
+  delay(1);
 }

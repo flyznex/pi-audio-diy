@@ -59,7 +59,12 @@ String readLine(const char * path, long offset);
 /// @param index index (line number)
 /// @return line typed string 
 String readLineByIndex(const char * path, long *offsets, int index);
+
+String * readPagingWithIndex(const char *path, long *offset, int index, int psize = 4);
 // check file by cut prefix;
 bool isFile(String line);
 // get filename by cut prefix;
 String getFileName(String line);
+
+void addRecord(Print *pr, String rc);
+String addPrefix(String prefix, String s);
