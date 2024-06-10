@@ -23,5 +23,4 @@ static Adafruit_SSD1306 ssd1036Display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_
 
 bool initDisplay();
 void drawStr(int posX, int posY, int size, String content, bool isInverse = false);
-
 #endif
