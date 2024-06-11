@@ -1,5 +1,6 @@
 #ifndef ELEMENT_H
 #define ELEMENT_H
+#include <stdint.h>
 class Element
 {
 public:
@@ -64,7 +65,7 @@ public:
     void update();
     void draw();
     void clear();
-    void setIcon(u_int8_t *icon);
+    void setIcon(uint8_t *icon);
 
 protected:
     Icon icon;

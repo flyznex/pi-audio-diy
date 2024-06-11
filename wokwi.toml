@@ -1,4 +1,4 @@
 [wokwi]
 version = 1
-firmware = "build/pi-audio-diy.ino.uf2"
-elf = "build/pi-audio-diy.ino.elf"
+firmware = ".pio/build/pico/firmware.uf2"
+elf = ".pio/build/pico/firmware.elf"

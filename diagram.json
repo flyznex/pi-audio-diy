@@ -13,7 +13,7 @@
             }
         },
         {
-            "type": "board-ssd1306",
+            "type": "wokwi-ssd1306",
             "id": "ssd1306",
             "top": 200,
             "left": -200,
@@ -26,7 +26,7 @@
             "left": -300.67,
             "rotate": 0,
             "attrs": {}
-        }
+          }
     ],
     "connections": [
         [
@@ -41,7 +41,7 @@
             "",
             []
         ],
-         [
+        [
             "pico:GND.1",
             "ssd1306:GND",
             "black",
@@ -49,21 +49,38 @@
         ],
         [
             "pico:3V3",
-            "ssd1306:VCC",
+            "ssd1306:3V3",
             "red",
             []
         ],
         [
-            "pico:GP8",
-            "ssd1306:SDA",
+            "pico:GP13",
+            "ssd1306:CS",
             "green",
             []
         ],
         [
-            "pico:GP9",
-            "ssd1306:SCL",
+            "pico:GP14",
+            "ssd1306:DC",
             "green",
             []
+        ],
+        [
+            "pico:GP12",
+            "ssd1306:RST",
+            "green",
+            []
+        ],
+        [
+            "pico:GP10",
+            "ssd1306:CLK",
+            "green",
+            []
+        ],        [
+            "pico:GP11",
+            "ssd1306:DATA",
+            "green",
+            ["*"]
         ],
         [
             "pico:GND.6",
@@ -92,7 +109,7 @@
         [
             "pico:GP7",
             "sd1:DI",
-            "green",
+            "black",
             []
         ],
         [

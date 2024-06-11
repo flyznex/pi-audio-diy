@@ -1,12 +1,14 @@
-#include "src/Display/ssd1306.h"
-
+#include <Arduino.h>
+#include "ssd1306.h"
 void setup() {
   Serial1.begin(115200);
   Serial1.println("Hello Arduino\n");
-  bool d = initDisplay();
+  bool d = ssd1036Display.begin(SSD1306_SWITCHCAPVCC);
   if (!d) {
     Serial1.println("can't start display module");
   }
+  delay(2000);
+  Serial1.println("init display success");
   // NOTE: The following values are known to work with the Adafruit microphone:
   // i2s.setBitsPerSample(32);
   // i2s.setFrequency(16000);
