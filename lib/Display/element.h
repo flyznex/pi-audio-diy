@@ -1,6 +1,7 @@
 #ifndef ELEMENT_H
 #define ELEMENT_H
 #include <stdint.h>
+#include "ssd1306.h"
 class Element
 {
 public:
@@ -20,6 +21,7 @@ class Icon : public Element
 {
 public:
     Icon(int16_t posX, int16_t posY, uint8_t *icon, bool isInverse = false);
+    Icon(int16_t posX, int16_t posY, uint8_t *icon,int16_t w,int16_t h, bool isInverse = false);
     void setBgColor(bool isInverse = false);
     void update();
     void draw();
@@ -30,7 +32,7 @@ public:
 
 protected:
     bool isUpdated;
-    int16_t posX, posY;
+    int16_t posX, posY, iconW, iconH;
     bool isInverse;
     uint8_t *icon;
 };

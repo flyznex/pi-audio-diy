@@ -18,10 +18,13 @@
 static Adafruit_SSD1306 ssd1036Display(SCREEN_WIDTH, SCREEN_HEIGHT, &SPI1, OLED_DC, OLED_RESET, OLED_CS);
 #else
 #define OLED_RESET -1
+#define OLED_SDA 12
+#define OLED_SCL 13
 static Adafruit_SSD1306 ssd1036Display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 #endif
 
 bool initDisplay();
+void clearDisplay();
 void drawStr(int posX, int posY, int size, String content, bool isInverse = false);
 
 #endif
