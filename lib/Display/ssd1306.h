@@ -7,7 +7,7 @@
 
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
-
+typedef Adafruit_SSD1306 ssd1306;
 // Declaration for SSD1306 display connected using SPI
 #ifdef OLED_SPI
 #define OLED_MOSI 11
@@ -15,12 +15,12 @@
 #define OLED_DC 14
 #define OLED_CS 13
 #define OLED_RESET 12
-static Adafruit_SSD1306 ssd1036Display(SCREEN_WIDTH, SCREEN_HEIGHT, &SPI1, OLED_DC, OLED_RESET, OLED_CS);
+extern ssd1306 ssd1036Display;
 #else
 #define OLED_RESET -1
 #define OLED_SDA 12
 #define OLED_SCL 13
-static Adafruit_SSD1306 ssd1036Display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+extern ssd1306 ssd1036Display;
 #endif
 
 bool initDisplay();

@@ -1,5 +1,11 @@
 #include "ssd1306.h"
 
+#ifdef OLED_SPI
+ssd1306 ssd1036Display(SCREEN_WIDTH, SCREEN_HEIGHT, &SPI1, OLED_DC, OLED_RESET, OLED_CS);
+#else
+ssd1306 ssd1036Display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+#endif
+
 bool initDisplay()
 {
 #ifndef OLED_SPI

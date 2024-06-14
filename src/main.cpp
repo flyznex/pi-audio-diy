@@ -25,8 +25,10 @@ void setup() {
   initDisplay();
   //clearDisplay();
   uint8_t *lg = logo_bmp;
-  Icon icon(0,0,lg,false);
-  icon.draw();
+  ssd1036Display.clearDisplay();
+  IconText te(0,0,lg,false);
+  te.setText("TEST show ICon!");
+  te.draw();
 }
 
 void loop() {

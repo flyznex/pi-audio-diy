@@ -48,7 +48,7 @@ public:
     void draw();
     void clear();
     virtual void setText(const char *str);
-    void setFormatText(const char *str, ...);
+    void setFormatText(const char *fmt, ...);
     static constexpr int charSize = 256;
 
 protected:
