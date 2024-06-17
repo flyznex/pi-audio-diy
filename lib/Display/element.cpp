@@ -39,7 +39,8 @@ void Icon::setIcon(uint8_t *icon)
 
 void Icon::clear()
 {
-    ssd1036Display.clearDisplay();
+    ssd1036Display.fillRect(posX, posY, iconW, iconH, BLACK);
+    ssd1036Display.display();
 }
 
 // ================================
@@ -74,6 +75,7 @@ void TextElem::draw()
     ssd1036Display.setTextSize(1); // 6x8 pixel
     isInverse ? ssd1036Display.setTextColor(BLACK, WHITE)
               : ssd1036Display.setTextColor(WHITE);
+    ssd1036Display.setTextWrap(false);
     ssd1036Display.setCursor(posX, posY);
     ssd1036Display.println(str);
     ssd1036Display.display();
@@ -104,8 +106,13 @@ void TextElem::setFormatText(const char *fmt, ...)
 // IconText class implement : TextElem
 // ===================================
 IconText::IconText(int16_t posX, int16_t posY, uint8_t *icon, bool isInverse)
-    : TextElem(posX + 16, posY+4, isInverse), icon(posX, posY, icon, isInverse) {}
-void IconText::setBgColor(bool isInverse) {}
+    : TextElem(posX + 16, posY + 4, isInverse), icon(posX, posY, icon, isInverse) {}
+void IconText::setBgColor(bool isInverse)
+{
+    if (isInverse)
+    {
+    }
+}
 void IconText::update()
 {
     isUpdated = true;
@@ -135,4 +142,37 @@ void IconText::clear()
 void IconText::setIcon(uint8_t *icon)
 {
     this->icon.setIcon(icon);
+}
+
+// ===================================
+// IconTextSelectable class implement : TextIcon
+// ===================================
+
+IconTextSelectable::IconTextSelectable(int16_t posX, int16_t posY, uint8_t *icon, bool isInverse):IconText(posX,posY,icon,isInverse)
+{
+    isSelected = false;
+}
+void IconTextSelectable::setSelected(bool selected)
+{
+    this->isSelected = selected;
+}
+void IconTextSelectable::update()
+{
+    this->isUpdated = true;
+    IconText::update();
+}
+void IconTextSelectable::draw()
+{
+    if(isSelected){
+        ssd1036Display.drawRoundRect(posX-16,posY-4,SCREEN_WIDTH,icon.iconHeight + 2,2,WHITE);
+        ssd1036Display.display();
+        ssd1036Display.startscrollleft(0x00, 0x01);
+    }
+    IconText::draw();
+}
+void IconTextSelectable::clear()
+{
+}
+void IconTextSelectable::setIcon(uint8_t *icon)
+{
 }

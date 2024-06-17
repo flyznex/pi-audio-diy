@@ -73,4 +73,16 @@ protected:
     Icon icon;
 };
 
+class IconTextSelectable : public IconText {
+public:
+    IconTextSelectable(int16_t posX, int16_t posY, uint8_t *icon, bool isInverse = false);
+    void setSelected(bool selected=true);
+    void update();
+    void draw();
+    void clear();
+    void setIcon(uint8_t *icon);
+protected:
+    bool isSelected;
+};
+
 #endif
