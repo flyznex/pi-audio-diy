@@ -15,11 +15,13 @@ typedef Adafruit_SSD1306 ssd1306;
 #define OLED_DC 14
 #define OLED_CS 13
 #define OLED_RESET 12
+#define SCREEN_ADDRESS 0x3D
 extern ssd1306 ssd1036Display;
 #else
 #define OLED_RESET -1
 #define OLED_SDA 12
 #define OLED_SCL 13
+#define SCREEN_ADDRESS 0x3C
 extern ssd1306 ssd1036Display;
 #endif
 

@@ -42,7 +42,7 @@
             []
         ],
         [
-            "pico:GND.1",
+            "pico:GND.4",
             "ssd1306:GND",
             "black",
             []
@@ -94,7 +94,7 @@
         [
             "pico:GP7",
             "sd1:DI",
-            "black",
+            "green",
             []
         ],
         [

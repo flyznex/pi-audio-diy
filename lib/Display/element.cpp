@@ -164,9 +164,12 @@ void IconTextSelectable::update()
 void IconTextSelectable::draw()
 {
     if(isSelected){
-        ssd1036Display.drawRoundRect(posX-16,posY-4,SCREEN_WIDTH,icon.iconHeight + 2,2,WHITE);
+        ssd1036Display.drawLine(posX-16,posY-4,128,posY-4,WHITE);
+        ssd1036Display.drawLine(posX-16,posY+12,128,posY+12,WHITE);
         ssd1036Display.display();
-        ssd1036Display.startscrollleft(0x00, 0x01);
+        if (strlen(str) > 16) {
+            ssd1036Display.startscrollleft(0,2);//check screen scroll func
+        }
     }
     IconText::draw();
 }

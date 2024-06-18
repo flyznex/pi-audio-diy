@@ -1,8 +1,14 @@
 #include "file_sdfat.h"
 #include "SdFat.h"
-
+sd_t sd;
+file_t root;
 bool initCard()
 {
+    SPI.setCS(SD_CS_PIN);
+    SPI.setTX(7);
+    SPI.setRX(4);
+    SPI.setSCK(6);
+    SPI.begin();
     if (!sd.begin(SD_CONFIG))
         return false;
     return root.open("/");

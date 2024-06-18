@@ -2,8 +2,6 @@
 
 #include "SdFat.h"
 
-#define SD_FAT_TYPE 3
-
 #define SPI_CLOCK SD_SCK_MHZ(4)
 
 #define INDEX_DB_FILE_NAME ".index"
@@ -27,13 +25,13 @@ typedef FsFile file_t;
 #error Invalid SD_FAT_TYPE
 #endif  // SD_FAT_TYPE
 
-sd_t sd;
-file_t file;
-file_t root;
-file_t idxFile;
-const uint8_t SD_CS_PIN = 10;
-int fileCount = 0;
-long currentIndex = 0;
+extern sd_t sd;
+extern file_t file;
+extern file_t root;
+extern file_t idxFile;
+const uint8_t SD_CS_PIN = 5;
+extern int fileCount;
+extern long currentIndex;
 
 // Try to select the best SD card configuration.
 #if HAS_SDIO_CLASS

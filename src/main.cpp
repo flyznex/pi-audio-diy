@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include "ssd1306.h"
 #include "element.h"
+#include "file_sdfat.h"
 
 static const unsigned char logo_bmp[] =
 { 0b00000000, 0b11000000,
@@ -88,20 +89,23 @@ static const unsigned char PROGMEM epd_bitmap_bg_no_labels[]  = {
 };
 
 void setup() {
-  Serial.begin(115200);
+  Serial1.begin(115200);
   initDisplay();
+  if (!initCard()) {
+    Serial1.println("error init card");
+    if (sd.card()->errorCode()) {
+      Serial1.println(sd.card()->errorData());
+      Serial1.println(sd.card()->errorCode());
+	  return;
+    }
+  }
   //clearDisplay();
   ssd1036Display.clearDisplay();
-  IconTextSelectable i(0,0,(u_int8_t*)logo_bmp);
-  i.setText("text, this is sample.");
-  i.setSelected();
-  i.draw();
-  IconTextSelectable i2(0,21,(u_int8_t*)logo_bmp);
-  i2.setText("text, this is sample.");
-  i2.draw();
-  IconTextSelectable i3(0,42,(u_int8_t*)logo_bmp);
-  i3.setText("text, this is sample.");
-  i3.draw();
+  
+  TextElem tex(0,0);
+  tex.setText("init done");
+  tex.draw();
+  sd.ls(&Serial1,LS_SIZE);
 }
 
 void loop() {
