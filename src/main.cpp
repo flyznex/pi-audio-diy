@@ -105,7 +105,13 @@ void setup() {
   TextElem tex(0,0);
   tex.setText("init done");
   tex.draw();
-  sd.ls(&Serial1,LS_SIZE);
+  root.open("/");
+  root.ls(&Serial1,LS_R|LS_SIZE);
+  tex.clear();
+  char *n;
+  root.getName(n,10);
+  tex.setText(n);
+  tex.draw();
 }
 
 void loop() {

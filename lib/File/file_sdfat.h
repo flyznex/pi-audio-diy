@@ -8,6 +8,10 @@
 #define INDEX_ROW_PREFIX_FILE "1|"
 #define INDEX_ROW_PREFIX_DIR "0|"
 const size_t FILE_NAME_DIM = 50;
+const uint8_t SD_CS_PIN = 5;
+const uint8_t SD_MOSI_PIN = 7;
+const uint8_t SD_MISO_PIN = 4;
+const uint8_t SD_SCK_PIN = 6;
 
 #if SD_FAT_TYPE == 0
 typedef SdFat sd_t;
@@ -29,7 +33,6 @@ extern sd_t sd;
 extern file_t file;
 extern file_t root;
 extern file_t idxFile;
-const uint8_t SD_CS_PIN = 5;
 extern int fileCount;
 extern long currentIndex;
 

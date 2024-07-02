@@ -82,6 +82,8 @@ void TextElem::draw()
 }
 void TextElem::clear()
 {
+    ssd1036Display.fillRect(posX,posY,strlen(str)*6,8,BLACK);
+    ssd1036Display.display();
 }
 void TextElem::setText(const char *str)
 {
@@ -175,6 +177,7 @@ void IconTextSelectable::draw()
 }
 void IconTextSelectable::clear()
 {
+    IconText::clear();
 }
 void IconTextSelectable::setIcon(uint8_t *icon)
 {
