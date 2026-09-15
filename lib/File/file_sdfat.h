@@ -1,3 +1,5 @@
+#pragma once
+
 #include <SPI.h>
 
 #include "SdFat.h"

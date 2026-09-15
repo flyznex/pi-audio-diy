@@ -93,16 +93,16 @@ void setup() {
   initDisplay();
   if (!initCard()) {
     Serial1.println("error init card");
-    if (sd.card()->errorCode()) {
+    if (sd.card() && sd.card()->errorCode()) {
       Serial1.println(sd.card()->errorData());
       Serial1.println(sd.card()->errorCode());
-	  return;
     }
+    return;
   }
   //clearDisplay();
   ssd1036Display.clearDisplay();
   
-  TextElem tex(0,0);
+  TextElem tex(0, 0, false);
   tex.setText("init done");
   tex.draw();
   const int MAX_ENTRIES = 16;
