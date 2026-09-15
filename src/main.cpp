@@ -105,13 +105,20 @@ void setup() {
   TextElem tex(0,0);
   tex.setText("init done");
   tex.draw();
-  root.open("/");
-  root.ls(&Serial1,LS_R|LS_SIZE);
+  const int MAX_ENTRIES = 16;
+  DirEntry entries[MAX_ENTRIES];
+  int count = listDir("/", entries, MAX_ENTRIES);
+  Serial1.print("entries found: ");
+  Serial1.println(count);
+  for (int i = 0; i < count; i++) {
+    Serial1.print(entries[i].isDir ? "[DIR] " : "[FILE] ");
+    Serial1.println(entries[i].name);
+  }
   tex.clear();
-  char *n;
-  root.getName(n,10);
-  tex.setText(n);
-  tex.draw();
+  if (count > 0) {
+    tex.setText(entries[0].name);
+    tex.draw();
+  }
 }
 
 void loop() {
