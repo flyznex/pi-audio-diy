@@ -1,12 +1,11 @@
+#pragma once
+
 #include <SPI.h>
 
 #include "SdFat.h"
 
 #define SPI_CLOCK SD_SCK_MHZ(4)
 
-#define INDEX_DB_FILE_NAME ".index"
-#define INDEX_ROW_PREFIX_FILE "1|"
-#define INDEX_ROW_PREFIX_DIR "0|"
 const size_t FILE_NAME_DIM = 50;
 const uint8_t SD_CS_PIN = 5;
 const uint8_t SD_MOSI_PIN = 7;
@@ -30,11 +29,7 @@ typedef FsFile file_t;
 #endif  // SD_FAT_TYPE
 
 extern sd_t sd;
-extern file_t file;
 extern file_t root;
-extern file_t idxFile;
-extern int fileCount;
-extern long currentIndex;
 
 // Try to select the best SD card configuration.
 #if HAS_SDIO_CLASS
@@ -46,26 +41,16 @@ extern long currentIndex;
 #endif  // HAS_SDIO_CLASS
 
 bool initCard();
-void indexFiles(const char * path);
-// return array contains list offset of file;
-long * loadIndexed(const char * dirPath);
-/// @brief read a line of file at offset
-/// @param path file
-/// @param offset offset want to get of file
-/// @return line typed string
-String readLine(const char * path, long offset);
-/// @brief read a line of file at index (line number)
-/// @param path file path
-/// @param offsets array offsets of file, result of loadIndexed
-/// @param index index (line number)
-/// @return line typed string 
-String readLineByIndex(const char * path, long *offsets, int index);
 
-String * readPagingWithIndex(const char *path, long *offset, int index, int psize = 4);
-// check file by cut prefix;
-bool isFile(String line);
-// get filename by cut prefix;
-String getFileName(String line);
+struct DirEntry {
+    char name[FILE_NAME_DIM];
+    bool isDir;
+};
 
-void addRecord(Print *pr, String rc);
-String addPrefix(String prefix, String s);
+/// @brief List up to maxEntries children of `path`, skipping the first startIndex.
+/// @param path directory to list
+/// @param out caller-allocated array of at least maxEntries DirEntry
+/// @param maxEntries capacity of `out`
+/// @param startIndex how many entries to skip before filling `out`
+/// @return number of entries written into `out`
+int listDir(const char *path, DirEntry *out, int maxEntries, int startIndex = 0);

@@ -12,10 +12,9 @@ FPlayer::FPlayer(const uint8_t *path) : AudioPlayer()
 
 bool FPlayer::begin(int index, bool isActive)
 {
-    String fname = getFileName(readLineByIndex((const char *)path, indexedFile, index));
-    setPath(fname.c_str());
-    //set source
-    
+    // Track selection lands in Phase 2 — see
+    // docs/superpowers/specs/2026-09-15-sd-audio-player-continuation-design.md §5.
+    return false;
 }
 bool FPlayer::previous(int offset)
 {
