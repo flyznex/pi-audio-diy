@@ -1,25 +1,22 @@
-#ifndef PLAYER_H
-#define PLAYER_H
+#pragma once
 
+#include "AudioTools.h"
 #include "AudioTools/AudioPlayer.h"
-#include "i2s_audio_init.h"
 #include "file_sdfat.h"
 
 #ifdef USE_SDFAT
 #include "AudioLibs/AudioSourceSDFAT.h"
 #endif
 
-class FPlayer : public AudioPlayer {
-public:
-    FPlayer();
-    FPlayer(const uint8_t *path);
-    bool begin(int index = 0, bool isActive = true);
-    bool previous(int offset = 1);
-    bool next(int offset = 1);
-    bool setWorkingDir(const uint8_t *path);
-protected:
-    I2SAudio i2sAudio;
-    uint8_t *path;
-    long *indexedFile;
-};
-#endif
+#define AUDIOINFO_DEFAULT AudioInfo(44100, 2, 16)
+const int PIN_BCLK = 2;   // BCCLK bit-clock
+const int PIN_WCLK = 3;   // LRCLK left-right clock
+const int PIN_DOUT = 8;   // Data in/out (was GP4 — collided with SD_MISO_PIN)
+const int PIN_MCLK = 9;   // Master-clock (was GP5 — collided with SD_CS_PIN)
+const int MCLK_MULTI = 512;
+
+extern AudioPlayer player;
+
+// Configures I2S with this project's pins and starts playback from
+// the SD card root. Call once from setup(), after initCard() succeeds.
+void beginAudioPlayer();
