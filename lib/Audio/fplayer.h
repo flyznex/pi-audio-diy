@@ -1,11 +1,10 @@
 #pragma once
 
 #include "AudioTools.h"
-#include "AudioTools/AudioPlayer.h"
 #include "file_sdfat.h"
 
 #ifdef USE_SDFAT
-#include "AudioLibs/AudioSourceSDFAT.h"
+#include "AudioTools/Disk/AudioSourceSDFAT.h"
 #endif
 
 #define AUDIOINFO_DEFAULT AudioInfo(44100, 2, 16)

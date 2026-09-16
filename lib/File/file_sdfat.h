@@ -4,7 +4,7 @@
 
 #include "SdFat.h"
 
-#define SPI_CLOCK SD_SCK_MHZ(4)
+#define SD_SPI_CLOCK SD_SCK_MHZ(4)
 
 const size_t FILE_NAME_DIM = 50;
 const uint8_t SD_CS_PIN = 5;
@@ -35,9 +35,9 @@ extern file_t root;
 #if HAS_SDIO_CLASS
 #define SD_CONFIG SdioConfig(FIFO_SDIO)
 #elif ENABLE_DEDICATED_SPI
-#define SD_CONFIG SdSpiConfig(SD_CS_PIN, DEDICATED_SPI, SPI_CLOCK)
+#define SD_CONFIG SdSpiConfig(SD_CS_PIN, SHARED_SPI, SD_SPI_CLOCK)
 #else  // HAS_SDIO_CLASS
-#define SD_CONFIG SdSpiConfig(SD_CS_PIN, SHARED_SPI, SPI_CLOCK)
+#define SD_CONFIG SdSpiConfig(SD_CS_PIN, SHARED_SPI, SD_SPI_CLOCK)
 #endif  // HAS_SDIO_CLASS
 
 bool initCard();
