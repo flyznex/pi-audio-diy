@@ -37,9 +37,9 @@ community discussion threads, not the real header**) found:
 ## 2. Goal (this sub-phase: 2a)
 
 Get **WAV playback working end-to-end** on real hardware: select a `.wav`
-file from the SD card's root directory (using Phase 1's `listDir()`
-results) and hear it play over I2S, with `next`/`previous`/volume control
-exercised via Serial commands (no physical buttons yet — that's Phase 3).
+file from the SD card's root directory and hear it play over I2S, with
+`next`/`previous`/volume control exercised via Serial commands (no
+physical buttons yet — that's Phase 3).
 
 MP3 support is **Phase 2b**, deliberately deferred: the exact behavior of
 `AudioSourceSDFAT`'s single `ext` constructor parameter (single extension
@@ -197,14 +197,16 @@ rather than forcing the assumption.
 
 ## 8. Error handling
 
-- `listDir()` returns 0 (empty directory): `begin()`/`next()`/`previous()`
-  are no-ops, `currentName()` returns an empty/placeholder string.
-- `player.setPath()` or `player.play()` fails (bad file, decoder can't
-  open it, I2S not ready): the failure propagates as a `false` return
-  from `FPlayer`'s method; `main.cpp` logs it to `Serial1` rather than
-  silently continuing.
-- `begin(index)` called with an out-of-range or non-playable index:
-  returns `false`, no state change.
+`AudioPlayer`'s own methods (`begin`, `next`, `previous`, `setVolume`) all
+return `bool`. This sub-phase does not add any handling on top of that —
+the Serial harness in `main.cpp` calls them directly and ignores the
+return value, matching the library's own example sketches. If a call
+fails (empty source, bad file, I2S not ready), nothing plays and nothing
+crashes; there's no display or feedback path in this plan to report it
+through beyond what you hear (or don't). Wiring failures back to
+something visible (a display message, a `Serial1` log) is straightforward
+to add later if silent failure proves annoying in practice, but nothing
+in this sub-phase's scope needs it yet.
 
 ## 9. Testing
 
@@ -214,7 +216,7 @@ plan; still true). Verification for 2a:
 - `pio run -e release` and `pio run -e wokwi` compile cleanly — this is
   the first real compile of anything in `lib/Audio/`, since Phase 1's
   final review confirmed `lib/Audio` had never actually been reachable
-  from the build graph before FPlayer becomes wired into `main.cpp`.
+  from the build graph before `main.cpp` includes `fplayer.h`.
 - Real hardware test (Wokwi has no meaningful way to verify actual audio
   output): flash `release`, put a couple of short `.wav` files at SD root,
   confirm `next`/`previous` over Serial move between them audibly, volume
