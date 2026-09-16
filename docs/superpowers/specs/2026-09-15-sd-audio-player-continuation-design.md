@@ -139,13 +139,18 @@ int listDir(const char *path, DirEntry *out, int maxEntries, int startIndex = 0)
 - Optional: flash `release` to real hardware with a real SD card and
   compare output.
 
-## 5. Phase 2 — Audio playback (scope, design deferred)
+## 5. Phase 2 — Audio playback
 
-Goal: `FPlayer::begin(index)` actually plays the track at `index` in
-the current working directory (from Phase 1's `listDir`) over I2S;
-`next`/`previous` change track.
+Detailed design: `docs/superpowers/specs/2026-09-16-audio-playback-phase2a-design.md`
+(sub-phase 2a, WAV-only, approved for implementation). That design
+resolved the open questions below via library research (composition
+over inheritance, `AudioSourceSDFAT`/`MultiDecoder`, `setPath`-driven
+selection bridged to Phase 1's `listDir()`) and split MP3 support into
+a follow-up sub-phase (2b) once 2a has actually compiled on real
+hardware and the real vendored library headers can be read.
 
-Known open questions to resolve when this phase starts:
+Original open questions (resolved by the 2a design doc, kept here for
+history):
 - The real constructor/override contract of `AudioPlayer` in
   `arduino-audio-tools` — the current `FPlayer` subclass calls a
   parameterless `AudioPlayer()` constructor which needs to be checked
