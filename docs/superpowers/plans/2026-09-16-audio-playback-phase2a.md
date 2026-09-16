@@ -252,20 +252,22 @@ next/previous/volume before physical buttons exist (Phase 3)."
 
 Run `pio run -e release` (and `-e wokwi` if you want the simulator too) in an environment with PlatformIO actually installed. This is the first real compile of everything Task 1 and Task 2 wrote — expect it to need at least one round of fixes.
 
-- [ ] **Step 2: If it fails, read the real vendored headers before guessing a fix**
+- [ ] **Step 2: (Superseded — already done in a post-review fix wave, kept for history) Read the real vendored headers before guessing a fix**
 
-`pio` will have fetched `arduino-audio-tools` into `.pio/libdeps/<env>/arduino-audio-tools/`. Read the actual `AudioSourceSDFAT` and `AudioPlayer` headers there (grep for `class AudioSourceSDFAT` and `class AudioPlayer` under that directory) and compare against spec §7's assumptions: the constructor's exact parameter list/order/types, and the exact `#include` path this version of the library expects. Fix `fplayer.h`/`fplayer.cpp` to match the real API, not the guessed one.
+A final whole-branch review already did this: it cloned the real upstream `arduino-audio-tools` at tag `v1.2.6` and found two `#include` paths in `lib/Audio/fplayer.h` that didn't exist in that version, plus a real SD/SPI bus-sharing conflict and a macro collision — all fixed in a follow-up commit (see spec §7 for the full account, and `platformio.ini`'s dependency is now pinned to `#v1.2.6` so this is reproducible). If `pio run` still fails for you, the library version may have moved again since — re-run this reconciliation step against whatever version actually gets fetched.
 
 - [ ] **Step 3: Put test files on the SD card and flash**
 
-Copy at least two short `.wav` files (16-bit PCM, matches `AUDIOINFO_DEFAULT`'s `AudioInfo(44100, 2, 16)` — resample first if yours don't match) to the SD card's root directory. Flash the `release` build to the Pico.
+Copy at least two short `.wav` files to the SD card (root or a subdirectory — `AudioSourceSDFAT`'s traversal is recursive, confirmed against the real header, so it isn't limited to the root directory the way Phase 1's `listDir()` demo is). `WAVDecoder` reads the sample rate/bit depth from each file's own header and reconfigures the I2S output at runtime (confirmed against the real header — `AUDIOINFO_DEFAULT` is only the *initial* config, not a requirement your files must match), so no resampling is needed beforehand. Flash the `release` build to the Pico.
 
 - [ ] **Step 4: Verify over Serial**
 
-Open a serial monitor at 115200 baud on the `Serial1` UART (wired to GP0/GP1 per `diagram.json`, or the physical UART pins on real hardware). Confirm:
+Open a serial monitor at 115200 baud on the `Serial1` UART (wired to GP0/GP1 per `diagram.json`, or the physical UART pins on real hardware). You should also see `AudioLogger` output here now (added in the post-review fix wave) — watch for `LOGE`-level lines if nothing plays. Confirm:
 - On boot, the first `.wav` file starts playing audibly.
-- Sending `n` moves to the next `.wav` file and it's audible; `p` moves back.
+- Sending `n` moves to the next `.wav` file and it's audible.
+- Sending `p` moves back — except at the very first track, where it's confirmed (against the real library's index-underflow guard) to replay the same track rather than wrapping to the last one; that's expected library behavior, not a bug to chase.
 - Sending `+`/`-` audibly changes volume, clamped at 0.0/1.0.
+- If the `release` build errors somewhere in Wi-Fi-related code (`platformio.ini` still lists `Wifi`/`lwIP-Ethernet` in `lib_deps` for what's otherwise a plain, non-`W`, Pico), try adding `-D NO_WIFI` to that environment's `build_flags` — the underlying core's `arduino-pico` framework uses that as an escape hatch to skip `WiFi.h`.
 
 - [ ] **Step 5: Report back**
 

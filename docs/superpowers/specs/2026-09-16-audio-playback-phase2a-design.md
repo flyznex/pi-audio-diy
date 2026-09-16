@@ -22,10 +22,15 @@ community discussion threads, not the real header**) found:
   `AudioPlayer(AudioSource&, AudioOutput&/AudioStream&, AudioDecoder&)`.
 - The library ships `AudioSourceSDFAT<AudioFs, AudioFile>` (template on
   filesystem/file types, matching this project's own `sd_t`/`file_t`
-  typedefs) with constructor
-  `AudioSourceSDFAT(const char* startFilePath = "/", const char* ext = ".mp3", int chipSelect = PIN_CS, int speedMHz = 2)`.
-  It does its own directory traversal/filtering internally
-  (`nextStream`/`previousStream`/`selectStream`), independent of this
+  typedefs). **Update (post-implementation, verified against the real
+  v1.2.6 header — see §7):** the real constructor is
+  `AudioSourceSDFAT(const char* startFilePath = "/", const char* ext = ".mp3", int chipSelect = PIN_CS, int speedMHz = 10, int spi_mode = DEDICATED_SPI, bool setupIndex = true)`
+  — two more parameters than originally guessed here (`spi_mode`,
+  `setupIndex`), and the `speedMHz` default is `10`, not `2`. The
+  `spi_mode` default (`DEDICATED_SPI`) turned out to matter a lot — see
+  §7. It does its own directory traversal/filtering internally
+  (`nextStream`/`previousStream`/`selectStream`, and it recurses into
+  subdirectories, not just the given path), independent of this
   project's `listDir()`.
 - `AudioPlayer::setPath(const char* path)` exists and selects a file by
   explicit path, separately from the source's own next/previous
@@ -163,50 +168,79 @@ void loop() {
 lifetime spanning `setup()` and `loop()`, matching every real usage
 example of this library.
 
-## 7. Known unknowns — verify against the real vendored header first
+## 7. Known unknowns — RESOLVED (verified against the real v1.2.6 header)
 
-Because the actual `AudioSourceSDFAT.h`/`AudioPlayer.h` source could not be
-fetched (GitHub 404s on the expected paths; Doxygen coverage for this
-specific class is thin), this design is built from wiki pages, a
-class-reference page, and community-example threads. **The first
-implementation step must be: once `pio run` has fetched
-`arduino-audio-tools` into `.pio/libdeps/`, read the actual installed
-`AudioSourceSDFAT.h` and `AudioPlayer.h` and reconcile this section
-against them before writing the rest of `fplayer.cpp`.** Specifically:
+**Update:** the final whole-branch review for this sub-phase cloned the
+real upstream `arduino-audio-tools` at tag `v1.2.6` and checked every
+assumption below against the actual header source, rather than
+documentation. Recorded here as history — what this section originally
+worried about, and what turned out to be true:
 
-- Whether `AudioSourceSDFAT` opens its own independent `SdFat`-family
-  instance internally (separate from this project's global `sd`/`root` in
-  `file_sdfat.cpp`), and whether that's safe to run alongside our own
-  already-`begin()`'d SD access on the same SPI bus/CS pin. If the library
-  re-initializes SPI/CS on each of its own operations (which is the
-  common pattern for this kind of wrapper), sequential access from two
-  independent objects should work but is wasteful — acceptable for 2a,
-  worth revisiting only if it actually breaks on hardware.
-- The exact constructor call this project needs:
-  `AudioSourceSDFAT<sd_t, file_t> source("/", ".wav", SD_CS_PIN, <speed>)`
-  — confirm parameter order and types against the real header before
-  transcribing into `fplayer.cpp`. Single-extension filtering (what 2a
-  actually needs) is the one documented, confirmed-from-a-real-example
-  usage of this constructor, so this specific call is lower-risk than the
-  multi-format question Phase 2b will have to resolve.
+- **Include paths — this section didn't flag them as the risk, and they
+  were the actual break.** The original code (guessing from an old
+  community example) used `#include "AudioTools/AudioPlayer.h"` and
+  `#include "AudioLibs/AudioSourceSDFAT.h"`. Neither exists in v1.2.6: the
+  real paths are `AudioTools/CoreAudio/AudioPlayer.h` (already pulled in
+  transitively by the umbrella `AudioTools.h`, so the include isn't even
+  needed) and `AudioTools/Disk/AudioSourceSDFAT.h`. This was a hard
+  compile-stop, fixed in the post-review fix wave. **Lesson for Phase
+  2b:** check `MultiDecoder`'s real include path
+  (`AudioTools/AudioCodecs/`, not `AudioLibs/`) before writing any code
+  that assumes a path from an old example.
+- **The constructor signature question resolved cleanly** — real
+  signature confirmed as `AudioSourceSDFAT(const char *startFilePath="/", const char *ext=".mp3", int chipSelect=PIN_CS, int speedMHz=10, int spi_mode=DEDICATED_SPI, bool setupIndex=true)`.
+  The call this project makes,
+  `AudioSourceSDFAT<sd_t, file_t> source("/", ".wav", SD_CS_PIN, 4 /* speedMHz */, SHARED_SPI)`,
+  matches this exactly.
+- **The dual-SdFat-instance question was real, and worse than
+  "wasteful."** `AudioSourceSDFAT` owns its own `AudioFs sd;` member and
+  calls `sd.begin()` with `DEDICATED_SPI` by default — the same mode this
+  project's own `file_sdfat.cpp` used for its independent `sd`/`root`
+  instance on the same physical CS pin. `DEDICATED_SPI` assumes exclusive
+  bus ownership; two objects both assuming that on the same bus is a real
+  conflict, not a performance concern. Fixed: both instances now use
+  `SHARED_SPI` (§3, §4's constructor call; `file_sdfat.h`'s `SD_CONFIG`
+  macro).
+- **An unanticipated collision the fix wave also had to close:** this
+  project's own `#define SPI_CLOCK SD_SCK_MHZ(4)` (in `file_sdfat.h`)
+  collided with a same-named macro the library itself unconditionally
+  defines to `SD_SCK_MHZ(50)`. Since the library's header is included
+  after `file_sdfat.h` in `fplayer.h`, the library's value silently won —
+  the SD card would have been clocked at 50MHz instead of 4MHz with only
+  a compiler warning as a hint. Fixed by renaming the project's macro to
+  `SD_SPI_CLOCK`.
+- **Root cause of the include-path break:** `platformio.ini`'s
+  `arduino-audio-tools` dependency was an unpinned git URL — the original
+  design was researched against a directory layout upstream has since
+  reorganized. Now pinned to `#v1.2.6`, the exact version this section
+  was verified against.
 
-If any of these turn out materially different from this section's
-assumptions, the implementer documents the deviation (in the fix report,
-or as a `knowledge://` note via privmind) and proceeds with the real API
-rather than forcing the assumption.
+This section's original framing named the constructor signature as the
+main risk to verify and treated include paths as an afterthought
+("confirm ... the exact `#include` path this version expects" was one
+clause in a Task 3 step). In hindsight the emphasis was backwards — worth
+remembering for Phase 2b: verify include paths and version-specific
+directory layout *first*, signatures second.
 
 ## 8. Error handling
 
 `AudioPlayer`'s own methods (`begin`, `next`, `previous`, `setVolume`) all
-return `bool`. This sub-phase does not add any handling on top of that —
-the Serial harness in `main.cpp` calls them directly and ignores the
-return value, matching the library's own example sketches. If a call
-fails (empty source, bad file, I2S not ready), nothing plays and nothing
-crashes; there's no display or feedback path in this plan to report it
-through beyond what you hear (or don't). Wiring failures back to
-something visible (a display message, a `Serial1` log) is straightforward
-to add later if silent failure proves annoying in practice, but nothing
-in this sub-phase's scope needs it yet.
+return `bool`. The Serial harness in `main.cpp`'s `loop()` calls them
+directly and ignores the return value, matching the library's own example
+sketches — this is deliberately unchanged from the original design.
+
+**Update (post-review):** `beginAudioPlayer()` itself does check the two
+one-time setup calls that matter most for a first hardware bring-up —
+`i2s.begin(cfg)` and `player.begin()` — and prints to `Serial1` on
+failure, plus turns on the library's own `AudioLogger` (`Serial1`, `Info`
+level) so the library's own `LOGE` calls (e.g. "sd.begin failed", "pins
+bck/ws must be next to each other") surface too. This was added because a
+silent "nothing plays" during Task 3's real hardware test is otherwise
+indistinguishable between "no .wav files found," "SD/SPI conflict," and
+"I2S misconfigured" — exactly the three things this sub-phase most needs
+to tell apart on the first real run. Runtime navigation (`next`/`previous`/
+`setVolume` in `loop()`) still ignores return values; that's out of scope
+here.
 
 ## 9. Testing
 
