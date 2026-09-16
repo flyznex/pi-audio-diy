@@ -51,51 +51,48 @@ headers available to read (see §7).
 
 ## 3. Architecture
 
-**Composition, not inheritance.** The existing skeleton
-(`class FPlayer : public AudioPlayer`) does not work with the real
-constructor: a base class's constructor always runs before a derived
-class's own members are initialized, so `FPlayer` cannot pass references
-to its *own* `source`/`decoder`/`i2s` members into `AudioPlayer`'s
-3-argument base constructor. Every real usage example wires these as
-sibling objects (globals, in the library's own examples), not as a
-base/derived pair.
+**Revision note (ponytail pass):** an earlier draft of this section wrapped
+everything in a composition-based `FPlayer` class holding its own
+`DirEntry[]` cache and re-implementing next/previous/extension-filtering
+by hand. That's deleted. `AudioPlayer` already exposes
+`begin()`/`next()`/`previous()`/`setVolume()`/`volume()`/`copy()` as
+public methods, and `AudioSourceSDFAT`'s own `ext` constructor parameter
+already does single-extension filtering — for a WAV-only sub-phase, a
+wrapper class around those would just be a same-signature pass-through
+with no added behavior. The custom `listDir()`-to-player bridge is
+deferred to Phase 3, when the UI actually has something to call it with;
+building it now, with no caller, was scaffolding for a consumer that
+doesn't exist yet.
 
-`FPlayer` becomes a plain composition class:
+**No wrapper class — plain composition via file-scope globals**, matching
+every real usage example of this library (they never subclass or wrap
+`AudioPlayer`). `lib/Audio/fplayer.h`/`fplayer.cpp` keeps its existing
+location and role (this is where the project already puts audio-related
+code) but now just declares/defines the global objects plus one setup
+function:
 
 ```cpp
-class FPlayer {
-public:
-    FPlayer();
-    bool setWorkingDir(const char *path);
-    bool begin(int index = 0);
-    bool next(int offset = 1);
-    bool previous(int offset = 1);
-    bool setVolume(float volume);
-    void copy();                 // ticks the underlying player; call every loop()
-    const char *currentName() const;
-private:
-    static const int MAX_ENTRIES = 16;
-    DirEntry entries[MAX_ENTRIES];
-    int entryCount = 0;
-    int currentIndex = -1;
-    char workingDir[FILE_NAME_DIM];
-
-    AudioSourceSDFAT<sd_t, file_t> source;
-    WAVDecoder decoder;
-    I2SStream i2s;
-    AudioPlayer player;
-
-    bool isPlayable(const DirEntry &e) const;  // !isDir && name ends with ".wav" (case-insensitive)
-    bool selectIndex(int idx);                 // builds full path, player.setPath(...), player.play()
-};
+// fplayer.h
+extern AudioPlayer player;
+void beginAudioPlayer();
 ```
 
+`fplayer.cpp` owns the actual `AudioSourceSDFAT`, `WAVDecoder`, and
+`I2SStream` objects (as file-local statics — nothing outside this file
+needs them directly, only `player` does) and constructs `player` from
+them at file scope. `beginAudioPlayer()` does the one piece of real,
+non-redundant setup work: building the `I2SConfig` with this project's
+pins and calling `i2s.begin(cfg)`, then `player.setVolume()` /
+`player.begin()`. `main.cpp` calls `beginAudioPlayer()` once from
+`setup()` and drives everything else directly through the global
+`player` object — there is nothing left for a wrapper class to add.
+
 The old `I2SAudio` wrapper class (`lib/Audio/i2s_audio_init.{h,cpp}`) is
-**deleted**. Its only job — deferring `i2s.begin(cfg)` until an explicit
-call — has no value once `I2SStream` is used directly as `AudioPlayer`'s
-output the way the library's own examples do. Its pin constants
+**deleted**, same reasoning as above one layer down: its only job —
+deferring `i2s.begin(cfg)` until an explicit call — has no value once
+`I2SStream` is used directly as `AudioPlayer`'s output. Its pin constants
 (`PIN_MCLK`, `PIN_WCLK`, `PIN_DOUT`, `PIN_BCLK`, `MCLK_MULTI`) move into
-`fplayer.h` since they're only meaningful there now.
+`fplayer.h`.
 
 ## 4. Pin reassignment
 
@@ -118,47 +115,33 @@ wiring against these new numbers** before flashing real hardware — this
 sub-phase only fixes the code-level collision, it doesn't know your
 actual DAC wiring.
 
-## 5. Navigation model — bridging with `listDir()`
+## 5. Navigation model
 
-Rather than trusting `AudioSourceSDFAT`'s own traversal/filtering (whose
-exact multi-format behavior is unconfirmed — see §7), `FPlayer` drives
-selection itself from Phase 1's `listDir()`:
+`AudioSourceSDFAT` is constructed with `ext = ".wav"`, so its own
+`nextStream()`/`previousStream()` traversal (reached via
+`player.next()`/`player.previous()`) already does exactly the filtering
+this sub-phase needs — no custom directory-walking code required. `next`,
+`previous`, `begin(index)`, `setVolume`, `volume`, and `copy` are all
+called directly on the global `player` object; nothing in this project
+wraps them.
 
-- `setWorkingDir(path)` calls `listDir(path, entries, MAX_ENTRIES)`,
-  stores the count, resets `currentIndex` to `-1`.
-- `begin(index)` bounds-checks `index` against `entryCount`; if
-  `entries[index]` is playable (`isPlayable()`: not a directory, name
-  ends in `.wav`, case-insensitive), it calls `selectIndex(index)` —
-  which builds the full path (`workingDir + "/" + entries[index].name`),
-  calls `player.setPath(fullPath)` then `player.play()`, and returns
-  whatever those calls report. If not playable, `begin()` returns `false`
-  without touching the player.
-- `next(offset)`/`previous(offset)` walk `entries[]` from `currentIndex`
-  in the requested direction, skipping non-playable entries (directories,
-  non-`.wav` files), and land on `selectIndex()` for the first playable
-  entry found. Reaching either end of `entries[]` without finding one
-  stops there and returns `false` (no wraparound in 2a — simple and
-  matches the "flat directory browsing only" scope already set in the
-  parent spec's out-of-scope list).
-- `copy()` is a thin wrapper over `player.copy()` — must be called every
-  `loop()` iteration for playback to actually progress (this is how the
-  library's pull-driven model works: nothing plays unless something
-  calls `copy()` regularly).
+Phase 1's `listDir()` is **not used by playback in this sub-phase** — it
+stays exactly what Phase 1 built it for (the SD-browsing demo already in
+`main.cpp`). Bridging "the file the UI highlights" to "the file that
+plays" is Phase 3's concern, once there's an actual UI selection to
+bridge from; `AudioPlayer::setPath()` is confirmed to exist for that when
+the time comes.
 
-This sidesteps most of the `AudioSourceSDFAT` ext-filter uncertainty:
-`FPlayer` always resolves *which* file to play itself, and only asks the
-underlying `player` to open one exact, already-known-good path — it never
-relies on the source's own filtering or enumeration order.
+`copy()` must be called every `loop()` iteration for playback to actually
+progress — this is how the library's pull-driven model works: nothing
+plays unless something calls `copy()` regularly.
 
 ## 6. Wiring in `main.cpp`
 
 `setup()` gains, after `initCard()` succeeds:
 
 ```cpp
-FPlayer player;
-player.setWorkingDir("/");
-player.setVolume(0.5f);   // conservative starting volume, not persisted
-player.begin(0);
+beginAudioPlayer();   // builds I2SConfig with this project's pins, i2s.begin(cfg), player.setVolume(0.5f), player.begin()
 ```
 
 `loop()` becomes:
@@ -168,23 +151,17 @@ void loop() {
   player.copy();
   if (Serial1.available()) {
     char c = Serial1.read();
-    switch (c) {
-      case 'n': player.next(); break;
-      case 'p': player.previous(); break;
-      case '+': player.setVolume(/* current + step, clamped to 1.0 */); break;
-      case '-': player.setVolume(/* current - step, clamped to 0.0 */); break;
-    }
-    Serial1.println(player.currentName());
+    if (c == 'n') player.next();
+    else if (c == 'p') player.previous();
+    else if (c == '+') player.setVolume(min(player.volume() + 0.1f, 1.0f));
+    else if (c == '-') player.setVolume(max(player.volume() - 0.1f, 0.0f));
   }
 }
 ```
 
-(Exact volume step/clamp logic and whether `FPlayer` exposes a getter for
-current volume is an implementation-plan-level detail, not fixed here.)
-
-`FPlayer player;` needs to be a global/static object (not a local in
-`setup()`), matching every real usage example of `AudioPlayer` in this
-library — the object's lifetime must span `setup()` and `loop()`.
+`player` (the global `AudioPlayer` declared in `fplayer.h`) has file-scope
+lifetime spanning `setup()` and `loop()`, matching every real usage
+example of this library.
 
 ## 7. Known unknowns — verify against the real vendored header first
 
@@ -205,16 +182,13 @@ against them before writing the rest of `fplayer.cpp`.** Specifically:
   common pattern for this kind of wrapper), sequential access from two
   independent objects should work but is wasteful — acceptable for 2a,
   worth revisiting only if it actually breaks on hardware.
-- Whether `setPath()` succeeds regardless of the `ext` filter the source
-  was constructed with, or whether it validates the extension and
-  rejects a path that doesn't match. If it validates, `AudioSourceSDFAT`
-  must be constructed with an `ext` value permissive enough to accept
-  `.wav` (exact mechanism — wildcard string, empty string, or something
-  else — to be read from the real header, not guessed).
 - The exact constructor call this project needs:
-  `AudioSourceSDFAT<sd_t, file_t> source("/", <ext-value-per-above>, SD_CS_PIN, <speed>)`
+  `AudioSourceSDFAT<sd_t, file_t> source("/", ".wav", SD_CS_PIN, <speed>)`
   — confirm parameter order and types against the real header before
-  transcribing into `fplayer.cpp`.
+  transcribing into `fplayer.cpp`. Single-extension filtering (what 2a
+  actually needs) is the one documented, confirmed-from-a-real-example
+  usage of this constructor, so this specific call is lower-risk than the
+  multi-format question Phase 2b will have to resolve.
 
 If any of these turn out materially different from this section's
 assumptions, the implementer documents the deviation (in the fix report,
