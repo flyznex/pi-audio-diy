@@ -2,6 +2,7 @@
 #include "ssd1306.h"
 #include "element.h"
 #include "file_sdfat.h"
+#include "fplayer.h"
 
 static const unsigned char logo_bmp[] =
 { 0b00000000, 0b11000000,
@@ -119,8 +120,22 @@ void setup() {
     tex.setText(entries[0].name);
     tex.draw();
   }
+
+  beginAudioPlayer();
 }
 
 void loop() {
-  
+  player.copy();
+  if (Serial1.available()) {
+    char c = Serial1.read();
+    if (c == 'n') {
+      player.next();
+    } else if (c == 'p') {
+      player.previous();
+    } else if (c == '+') {
+      player.setVolume(min(player.volume() + 0.1f, 1.0f));
+    } else if (c == '-') {
+      player.setVolume(max(player.volume() - 0.1f, 0.0f));
+    }
+  }
 }
