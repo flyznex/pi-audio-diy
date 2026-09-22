@@ -31,14 +31,12 @@ typedef FsFile file_t;
 extern sd_t sd;
 extern file_t root;
 
-// Try to select the best SD card configuration.
-#if HAS_SDIO_CLASS
-#define SD_CONFIG SdioConfig(FIFO_SDIO)
-#elif ENABLE_DEDICATED_SPI
+// This board is wired over SPI (see SPI.setCS/setTX/setRX/setSCK in
+// initCard()), never SDIO — SdFat's HAS_SDIO_CLASS is unconditionally 1 on
+// RP2040 (its own PIO-SDIO driver), so the old #if HAS_SDIO_CLASS branch here
+// picked SdioConfig(FIFO_SDIO), a Teensy-only constant that doesn't exist on
+// this platform.
 #define SD_CONFIG SdSpiConfig(SD_CS_PIN, SHARED_SPI, SD_SPI_CLOCK)
-#else  // HAS_SDIO_CLASS
-#define SD_CONFIG SdSpiConfig(SD_CS_PIN, SHARED_SPI, SD_SPI_CLOCK)
-#endif  // HAS_SDIO_CLASS
 
 bool initCard();
 
