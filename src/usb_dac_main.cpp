@@ -26,6 +26,29 @@ static StreamCopy copier(i2s, usb);
 static uint32_t last_stat_ms = 0;
 static uint32_t bytes_copied_total = 0;
 
+// Callback khi máy tính kết nối và nhận diện thành công
+void tud_mount_cb(void) {
+    Serial1.println("[USB EVENT] Device mounted to Host PC.");
+}
+
+// Callback khi rút cáp hoặc ngắt kết nối USB
+void tud_umount_cb(void) {
+    Serial1.println("[USB EVENT] Device unmounted.");
+    i2s.flush();
+}
+
+// Callback khi máy tính vào chế độ Sleep / Suspend
+void tud_suspend_cb(bool remote_wakeup_en) {
+    (void) remote_wakeup_en;
+    Serial1.println("[USB EVENT] USB suspended (Host sleep/idle).");
+    i2s.flush();
+}
+
+// Callback khi máy tính thức dậy (Resume)
+void tud_resume_cb(void) {
+    Serial1.println("[USB EVENT] USB resumed.");
+}
+
 void setup() {
     // Khởi tạo UART chẩn đoán Serial1 (GP0/GP1 @ 115200)
     Serial1.begin(115200);
