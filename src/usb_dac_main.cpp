@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <Adafruit_TinyUSB.h>
+#include <atomic>
 #include "AudioTools.h"
 #include "AudioTools/Communication/USB/USBAudioStream.h"
 
@@ -21,32 +22,66 @@ static const int MCLK_MULT = 256;  // MCLK = 256 * 96000 = 24.576 MHz
 static USBAudioStream usb;
 static I2SStream i2s;
 static StreamCopy copier(i2s, usb);
+// Con trỏ tới driver I2S cụ thể (RP2040): i2s.driver() chỉ trả về I2SDriverBase*,
+// loại cơ sở không khai báo flush()/getOverUnderflow(). Driver thật sự trên RP2040
+// luôn là I2SDriverRP2040 nên ép kiểu 1 lần ở setup() là an toàn.
+static I2SDriverRP2040* i2s_driver = nullptr;
+
+// Cờ sự kiện USB: callback TinyUSB chạy trong ngữ cảnh ngắt (IRQ), nên chỉ được
+// phép ghi cờ ở đây — mọi việc tốn thời gian (Serial1, flush DMA) phải dời sang
+// loop() để tránh làm trễ/stall ngắt.
+enum UsbEvent : uint32_t {
+    USB_EVT_MOUNTED   = 1u << 0,
+    USB_EVT_UNMOUNTED = 1u << 1,
+    USB_EVT_SUSPENDED = 1u << 2,
+    USB_EVT_RESUMED   = 1u << 3,
+};
+static std::atomic<uint32_t> usb_event_flags{0};
 
 // Biến thống kê trạng thái
 static uint32_t last_stat_ms = 0;
 static uint32_t bytes_copied_total = 0;
 
-// Callback khi máy tính kết nối và nhận diện thành công
+// Callback khi máy tính kết nối và nhận diện thành công (chạy trong IRQ context)
 void tud_mount_cb(void) {
-    Serial1.println("[USB EVENT] Device mounted to Host PC.");
+    usb_event_flags.fetch_or(USB_EVT_MOUNTED, std::memory_order_relaxed);
 }
 
-// Callback khi rút cáp hoặc ngắt kết nối USB
+// Callback khi rút cáp hoặc ngắt kết nối USB (chạy trong IRQ context)
 void tud_umount_cb(void) {
-    Serial1.println("[USB EVENT] Device unmounted.");
-    i2s.flush();
+    usb_event_flags.fetch_or(USB_EVT_UNMOUNTED, std::memory_order_relaxed);
 }
 
-// Callback khi máy tính vào chế độ Sleep / Suspend
+// Callback khi máy tính vào chế độ Sleep / Suspend (chạy trong IRQ context)
 void tud_suspend_cb(bool remote_wakeup_en) {
     (void) remote_wakeup_en;
-    Serial1.println("[USB EVENT] USB suspended (Host sleep/idle).");
-    i2s.flush();
+    usb_event_flags.fetch_or(USB_EVT_SUSPENDED, std::memory_order_relaxed);
 }
 
-// Callback khi máy tính thức dậy (Resume)
+// Callback khi máy tính thức dậy (Resume) (chạy trong IRQ context)
 void tud_resume_cb(void) {
-    Serial1.println("[USB EVENT] USB resumed.");
+    usb_event_flags.fetch_or(USB_EVT_RESUMED, std::memory_order_relaxed);
+}
+
+// Xử lý các sự kiện USB đã ghi nhận ở ISR, nhưng thực thi an toàn trong loop()
+static void process_usb_events() {
+    uint32_t events = usb_event_flags.exchange(0, std::memory_order_relaxed);
+    if (events == 0) return;
+
+    if (events & USB_EVT_MOUNTED) {
+        Serial1.println("[USB EVENT] Device mounted to Host PC.");
+    }
+    if (events & USB_EVT_UNMOUNTED) {
+        Serial1.println("[USB EVENT] Device unmounted.");
+        if (i2s_driver) i2s_driver->flush();
+    }
+    if (events & USB_EVT_SUSPENDED) {
+        Serial1.println("[USB EVENT] USB suspended (Host sleep/idle).");
+        if (i2s_driver) i2s_driver->flush();
+    }
+    if (events & USB_EVT_RESUMED) {
+        Serial1.println("[USB EVENT] USB resumed.");
+    }
 }
 
 void setup() {
@@ -77,6 +112,8 @@ void setup() {
     } else {
         Serial1.println("[OK] I2S DAC initialized successfully.");
     }
+    // Lưu lại con trỏ driver cụ thể để dùng flush()/getOverUnderflow() sau này.
+    i2s_driver = static_cast<I2SDriverRP2040*>(i2s.driver());
 
     // 2. Cấu hình USB Audio Class 2.0 (UAC2) Asynchronous
     USBAudioConfig usb_cfg;
@@ -102,6 +139,9 @@ void setup() {
 }
 
 void loop() {
+    // Xử lý các sự kiện USB mount/unmount/suspend/resume ghi nhận từ ISR
+    process_usb_events();
+
     // Luân chuyển dữ liệu từ USB sang I2S
     size_t copied = copier.copy();
     if (copied > 0) {
@@ -112,8 +152,10 @@ void loop() {
     uint32_t now = millis();
     if (now - last_stat_ms >= 5000) {
         last_stat_ms = now;
-        Serial1.printf("[STATUS] Stream throughput: %u bytes/5s, Total: %u KB\n",
-                       bytes_copied_total, (bytes_copied_total / 1024));
+        bool underflow = i2s_driver != nullptr && i2s_driver->getOverUnderflow();
+        Serial1.printf("[STATUS] Stream throughput: %u bytes/5s, Total: %u KB, Underflow: %s\n",
+                       bytes_copied_total, (bytes_copied_total / 1024),
+                       underflow ? "YES" : "no");
         bytes_copied_total = 0;
     }
 }

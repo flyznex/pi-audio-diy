@@ -211,8 +211,8 @@ system_profiler SPAudioDataType | grep -A 20 "Pico"
 
 3. **Xem chi tiết định dạng hỗ trợ:**
    ```bash
-   arecord -l
-   arecord -L
+   aplay -l
+   aplay -L
    # Chọn thiết bị Pico và kiểm tra format được hỗ trợ
    ```
 
